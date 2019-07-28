@@ -50,7 +50,7 @@ let promethuesAlertsCntr = 0;
 
 app.use(express.json({strict: true, type: "application/json"}));
 
-app.get('status', (req, res) => {
+app.get('/status', (req, res) => {
     res.json({
         grafanaAlerts: grafanaAlertsCntr,
         promethuesAlerts: promethuesAlertsCntr
