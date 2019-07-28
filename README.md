@@ -5,13 +5,13 @@ Recieves alerts from Grafana or Prometheus Alertmanager webhooks and logs to ale
 ## Alerts APIs
 
 ### Grafana APIs
-- POST /grafana/alerts
+- `POST /grafana/alerts`
 
 ### Prometheus Alertmanager APIs
-- POST /prometheus/alerts
+- `POST /prometheus/alerts`
 
 ### Status APIs
-- GET /status
+- `GET /status`
 
 ### Environment variables 
 - PORT - Server port
