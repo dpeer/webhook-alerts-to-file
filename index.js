@@ -16,7 +16,7 @@ const logger = winston.createLogger({
     ),
     transports: [
         new winston.transports.File({
-            filename: loggerFilePath ,
+            filename: loggerFilePath,
             maxsize: 1024 * 1024 * 10,
             maxFiles: 10,
             tailable: true,
@@ -33,7 +33,7 @@ const alertsLogger = winston.createLogger({
     ),
     transports: [
         new winston.transports.File({
-            filename: alertsFilePath ,
+            filename: alertsFilePath,
             maxsize: 1024 * 1024 * 10,
             maxFiles: 10,
             tailable: true,
