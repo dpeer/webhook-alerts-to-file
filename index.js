@@ -46,14 +46,14 @@ const app = express();
 const port = process.env.PORT || 9000;
 
 let grafanaAlertsCntr = 0;
-let promethuesAlertsCntr = 0;
+let prometheusAlertsCntr = 0;
 
 app.use(express.json({strict: true, type: "application/json"}));
 
 app.get('/status', (req, res) => {
     res.json({
         grafanaAlerts: grafanaAlertsCntr,
-        promethuesAlerts: promethuesAlertsCntr
+        prometheusAlerts: prometheusAlertsCntr
     });
 });
 
@@ -63,9 +63,9 @@ app.post('/grafana/alerts', (req, res) => {
     res.sendStatus(200);
 });
 
-app.post('/promethues/alerts', (req, res) => {
+app.post('/prometheus/alerts', (req, res) => {
     alertsLogger.info(JSON.stringify(req.body));
-    promethuesAlertsCntr++;
+    prometheusAlertsCntr++;
     res.sendStatus(200);
 });
 
