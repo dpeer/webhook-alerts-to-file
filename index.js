@@ -7,7 +7,11 @@ const myFormat = winston.format.printf(({ level, message, timestamp }) => {
     return `${timestamp} ${level}: ${message}`;
 });
 
-const loggerFileName = `webhook-alerts_${process.pid}_${Date.now()}.log`;
+const myAlertFormat = winston.format.printf(({ message }) => {
+    return `${message}`;
+});
+
+const loggerFileName = `webhook-alerts_${process.pid}_${new Date().toISOString()}.log`;
 const loggerFilePath = process.env.LOGGER_PATH ? path.join(process.env.LOGGER_PATH, loggerFileName) : path.join(os.tmpdir(), loggerFileName);
 const logger = winston.createLogger({
     format: winston.format.combine(
@@ -20,6 +24,7 @@ const logger = winston.createLogger({
             maxsize: 1024 * 1024 * 10,
             maxFiles: 10,
             tailable: true,
+            level: 'debug'
         }),
         new winston.transports.Console()
     ]
@@ -27,10 +32,7 @@ const logger = winston.createLogger({
 
 const alertsFilePath = process.env.ALERTS_FILE_PATH ? process.env.ALERTS_FILE_PATH : path.join(process.cwd(), 'alerts.log');
 const alertsLogger = winston.createLogger({
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        myFormat
-    ),
+    format: myAlertFormat,
     transports: [
         new winston.transports.File({
             filename: alertsFilePath,
@@ -58,14 +60,31 @@ app.get('/status', (req, res) => {
 });
 
 app.post('/grafana/alerts', (req, res) => {
+    logger.debug(JSON.stringify(req.body));
+
     alertsLogger.info(JSON.stringify(req.body));
     grafanaAlertsCntr++;
     res.sendStatus(200);
 });
 
 app.post('/prometheus/alerts', (req, res) => {
-    alertsLogger.info(JSON.stringify(req.body));
-    prometheusAlertsCntr++;
+    logger.debug(JSON.stringify(req.body));
+
+    let alertMsg = req.body;
+    let timestampe = new Date().toISOString();
+    alertMsg.alerts.forEach((alert) => {
+            if (alert.status === 'resolved') {
+                return;
+            }
+            let title = alert.annotations.summary;
+            let description = alert.annotations.description;
+            let category = alert.labels.alertname;
+            let server = getServerWithoutPort(alert.labels.instance);
+            let severity = alert.labels.severity;
+            let logMsg = `${title}|${description}|${timestampe}|${category}|${server}|${severity}`;
+            alertsLogger.info(logMsg);
+            prometheusAlertsCntr++;
+        });
     res.sendStatus(200);
 });
 
@@ -73,3 +92,8 @@ app.listen(port, () => {
     logger.info(`Listening on port: ${port}`);
     logger.info(`Alerts file path: ${alertsFilePath}`);
 });
+
+function getServerWithoutPort(server) {
+    let portIdx = server.indexOf(':');
+    return (portIdx < 0) ? server : server.substr(0, portIdx);
+}
