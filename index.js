@@ -1,5 +1,6 @@
 const path = require('path');
 const os = require('os');
+const url = require('url');
 const winston = require('winston');
 const express = require('express');
 
@@ -62,7 +63,13 @@ app.get('/status', (req, res) => {
 app.post('/grafana/alerts', (req, res) => {
     logger.debug(JSON.stringify(req.body));
 
-    alertsLogger.info(JSON.stringify(req.body));
+	let alert = req.body;
+	let timestamp = new Date().toISOString();
+	let server = url.parse(alert.ruleUrl).hostname;
+	let severity = alert.severity || 'High';
+	let logMsg = `${alert.title}|${alert.message}|${timestamp}|${alert.ruleName}|${server}|${severity}|${alert.state}`;
+	alertsLogger.info(logMsg);
+
     grafanaAlertsCntr++;
     res.sendStatus(200);
 });
@@ -71,17 +78,14 @@ app.post('/prometheus/alerts', (req, res) => {
     logger.debug(JSON.stringify(req.body));
 
     let alertMsg = req.body;
-    let timestampe = new Date().toISOString();
+    let timestamp = new Date().toISOString();
     alertMsg.alerts.forEach((alert) => {
-            if (alert.status === 'resolved') {
-                return;
-            }
             let title = alert.annotations.summary;
             let description = alert.annotations.description;
             let category = alert.labels.alertname;
             let server = getServerWithoutPort(alert.labels.instance);
             let severity = alert.labels.severity;
-            let logMsg = `${title}|${description}|${timestampe}|${category}|${server}|${severity}`;
+            let logMsg = `${title}|${description}|${timestamp}|${category}|${server}|${severity}|${alert.status}`;
             alertsLogger.info(logMsg);
             prometheusAlertsCntr++;
         });
