@@ -64,17 +64,25 @@ app.post('/grafana/alerts', (req, res) => {
     logger.debug(JSON.stringify(req.body));
 
 	let alert = req.body;
-	let timestamp = new Date().toISOString();
-	let server = alert.ruleUrl ? url.parse(alert.ruleUrl).hostname : '';
-	let severity = alert.severity || 'High';
-	let metric = '';
-	let value='';
+	let metric, value;
 	if (alert.evalMatches && alert.evalMatches.length) {
 	    metric = alert.evalMatches[0].metric;
         value = alert.evalMatches[0].value;
     }
-	let logMsg = `${alert.title}|${alert.message}|${timestamp}|${alert.ruleName}|${server}|${severity}|${alert.state}|${alert.ruleId}|${metric}|${value}`;
-	alertsLogger.info(logMsg);
+
+    let logMsgArr = [
+        alert.title,
+        alert.message,
+        new Date().toISOString(),
+        alert.ruleName,
+        alert.ruleUrl ? url.parse(alert.ruleUrl).hostname : '',
+        alert.severity || 'High',
+        alert.state,
+        alert.ruleId,
+        metric,
+        value
+    ];
+	alertsLogger.info(logMsgArr.join(';'));
 
     grafanaAlertsCntr++;
     res.sendStatus(200);
@@ -85,16 +93,20 @@ app.post('/prometheus/alerts', (req, res) => {
 
     let alertMsg = req.body;
     let timestamp = new Date().toISOString();
+    let logMsgArr;
     alertMsg.alerts.forEach((alert) => {
-            let title = alert.annotations ? alert.annotations.summary : '';
-            let description = alert.annotations ? alert.annotations.description : '';
-            let category = alert.labels ? alert.labels.alertname : '';
-            let server = alert.labels ? getServerWithoutPort(alert.labels.instance) : '';
-            let severity = alert.labels ? alert.labels.severity : '';
-            let logMsg = `${title}|${description}|${timestamp}|${category}|${server}|${severity}|${alert.status}`;
-            alertsLogger.info(logMsg);
-            prometheusAlertsCntr++;
-        });
+        logMsgArr =[
+            alert.annotations ? alert.annotations.summary : '',
+            alert.annotations ? alert.annotations.description : '',
+            timestamp,
+            alert.labels ? alert.labels.alertname : '',
+            alert.labels ? getServerWithoutPort(alert.labels.instance) : '',
+            alert.labels ? alert.labels.severity : '',
+            alert.status
+        ];
+        alertsLogger.info(logMsgArr.join(';'));
+        prometheusAlertsCntr++;
+    });
     res.sendStatus(200);
 });
 
