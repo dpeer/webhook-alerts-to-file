@@ -65,9 +65,15 @@ app.post('/grafana/alerts', (req, res) => {
 
 	let alert = req.body;
 	let timestamp = new Date().toISOString();
-	let server = url.parse(alert.ruleUrl).hostname;
+	let server = alert.ruleUrl ? url.parse(alert.ruleUrl).hostname : '';
 	let severity = alert.severity || 'High';
-	let logMsg = `${alert.title}|${alert.message}|${timestamp}|${alert.ruleName}|${server}|${severity}|${alert.state}`;
+	let metric = '';
+	let value='';
+	if (alert.evalMatches && alert.evalMatches.length) {
+	    metric = alert.evalMatches[0].metric;
+        value = alert.evalMatches[0].value;
+    }
+	let logMsg = `${alert.title}|${alert.message}|${timestamp}|${alert.ruleName}|${server}|${severity}|${alert.state}|${alert.ruleId}|${metric}|${value}`;
 	alertsLogger.info(logMsg);
 
     grafanaAlertsCntr++;
@@ -80,11 +86,11 @@ app.post('/prometheus/alerts', (req, res) => {
     let alertMsg = req.body;
     let timestamp = new Date().toISOString();
     alertMsg.alerts.forEach((alert) => {
-            let title = alert.annotations.summary;
-            let description = alert.annotations.description;
-            let category = alert.labels.alertname;
-            let server = getServerWithoutPort(alert.labels.instance);
-            let severity = alert.labels.severity;
+            let title = alert.annotations ? alert.annotations.summary : '';
+            let description = alert.annotations ? alert.annotations.description : '';
+            let category = alert.labels ? alert.labels.alertname : '';
+            let server = alert.labels ? getServerWithoutPort(alert.labels.instance) : '';
+            let severity = alert.labels ? alert.labels.severity : '';
             let logMsg = `${title}|${description}|${timestamp}|${category}|${server}|${severity}|${alert.status}`;
             alertsLogger.info(logMsg);
             prometheusAlertsCntr++;
@@ -98,6 +104,10 @@ app.listen(port, () => {
 });
 
 function getServerWithoutPort(server) {
+    if (!server) {
+        return '';
+    }
+
     let portIdx = server.indexOf(':');
     return (portIdx < 0) ? server : server.substr(0, portIdx);
 }
