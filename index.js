@@ -50,6 +50,7 @@ const port = process.env.PORT || 9000;
 
 let grafanaAlertsCntr = 0;
 let prometheusAlertsCntr = 0;
+const SEP = ';';
 
 app.use(express.json({strict: true, type: "application/json"}));
 
@@ -64,10 +65,14 @@ app.post('/grafana/alerts', (req, res) => {
     logger.debug(JSON.stringify(req.body));
 
 	let alert = req.body;
-	let metric, value;
+    let evalMatches = [];
 	if (alert.evalMatches && alert.evalMatches.length) {
-	    metric = alert.evalMatches[0].metric;
-        value = alert.evalMatches[0].value;
+	    let idx = 0;
+	    while (idx < alert.evalMatches.length && idx < 5) {
+	        let evalMatch = new GrafanaEvalMatch(alert.evalMatches[idx]);
+            evalMatches.push(evalMatch);
+            idx++;
+        }
     }
 
     let logMsgArr = [
@@ -79,14 +84,36 @@ app.post('/grafana/alerts', (req, res) => {
         alert.severity || 'High',
         alert.state,
         alert.ruleId,
-        metric,
-        value
     ];
-	alertsLogger.info(logMsgArr.join(';'));
+    evalMatches.forEach((evalMatch) => {
+        logMsgArr.push(evalMatch.toString());
+    });
+
+	alertsLogger.info(logMsgArr.join(SEP));
 
     grafanaAlertsCntr++;
     res.sendStatus(200);
 });
+
+class GrafanaEvalMatch {
+    constructor({metric, value, tags}) {
+        this.metric = metric;
+        this.value = value;
+        this.tags = tags
+    }
+
+    toString() {
+        let tagsStr = '';
+        if (this.tags) {
+            Object.keys(this.tags).forEach((key) => {
+                tagsStr += key + ':' + this.tags[key] + '&';
+            });
+            tagsStr = tagsStr.slice(0, -1);
+        }
+
+        return this.metric + SEP + this.value + SEP + tagsStr;
+    }
+}
 
 app.post('/prometheus/alerts', (req, res) => {
     logger.debug(JSON.stringify(req.body));
@@ -104,15 +131,10 @@ app.post('/prometheus/alerts', (req, res) => {
             alert.labels ? alert.labels.severity : '',
             alert.status
         ];
-        alertsLogger.info(logMsgArr.join(';'));
+        alertsLogger.info(logMsgArr.join(SEP));
         prometheusAlertsCntr++;
     });
     res.sendStatus(200);
-});
-
-app.listen(port, () => {
-    logger.info(`Listening on port: ${port}`);
-    logger.info(`Alerts file path: ${alertsFilePath}`);
 });
 
 function getServerWithoutPort(server) {
@@ -123,3 +145,8 @@ function getServerWithoutPort(server) {
     let portIdx = server.indexOf(':');
     return (portIdx < 0) ? server : server.substr(0, portIdx);
 }
+
+app.listen(port, () => {
+    logger.info(`Listening on port: ${port}`);
+    logger.info(`Alerts file path: ${alertsFilePath}`);
+});
