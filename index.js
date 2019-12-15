@@ -101,7 +101,8 @@ class GrafanaEvalMatch {
 	constructor({metric, value, tags}) {
 		this.metric = metric;
 		this.value = value;
-		this.tags = tags
+		this.tags = tags;
+		this.region = this.tags && this.tags.region ? this.tags.region : '';
 	}
 
 	toString() {
@@ -113,7 +114,7 @@ class GrafanaEvalMatch {
 			tagsStr = tagsStr.slice(0, -1);
 		}
 
-		return this.metric + SEP + this.value + SEP + tagsStr;
+		return this.metric + SEP + this.value + SEP + tagsStr + SEP + this.region;
 	}
 }
 
