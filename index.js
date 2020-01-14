@@ -3,6 +3,7 @@ const os = require('os');
 const url = require('url');
 const winston = require('winston');
 const express = require('express');
+const envs = require('./envs');
 
 const myFormat = winston.format.printf(({level, message, timestamp}) => {
 	return `${timestamp} ${level}: ${message}`;
@@ -77,6 +78,12 @@ app.post('/grafana/alerts', (req, res) => {
 		evalMatches.push(evalMatch);
 	}
 
+	let farm;
+	const evalWithRegion = evalMatches.find(eval => !!eval.region);
+	if (evalWithRegion) {
+		farm = envs.farms[evalWithRegion.region.toLowerCase()];
+	}
+
 	const logMsgArr = [
 		alert.title,
 		alert.message,
@@ -86,6 +93,7 @@ app.post('/grafana/alerts', (req, res) => {
 		alert.severity || 'High',
 		alert.state,
 		alert.ruleId,
+		farm || '',
 	];
 	evalMatches.forEach((evalMatch) => {
 		logMsgArr.push(evalMatch.toString());
