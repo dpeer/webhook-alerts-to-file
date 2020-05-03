@@ -52,7 +52,8 @@ const port = process.env.PORT || 9000;
 let grafanaAlertsCntr = 0;
 let prometheusAlertsCntr = 0;
 const SEP = ';';
-const maxEvals = 5;
+const MAX_EVALS = 5;
+const STATUS_OK = 200;
 
 app.use(express.json({strict: true, type: "application/json"}));
 
@@ -69,7 +70,7 @@ app.post('/grafana/alerts', (req, res) => {
 	const alert = req.body;
 	const evalMatches = [];
 	const evalMatchesCnt = alert.evalMatches && alert.evalMatches.length ? alert.evalMatches.length : 0;
-	for (let idx = 0; idx < maxEvals; idx++) {
+	for (let idx = 0; idx < MAX_EVALS; idx++) {
 		let evalMatch = (idx < evalMatchesCnt) ? new GrafanaEvalMatch(alert.evalMatches[idx]) : new GrafanaEvalMatch({
 			metric: '',
 			value: '',
@@ -79,9 +80,11 @@ app.post('/grafana/alerts', (req, res) => {
 	}
 
 	let farm;
-	const evalWithRegion = evalMatches.find(eval => !!eval.region);
-	if (evalWithRegion) {
-		farm = envs.farms[evalWithRegion.region.toLowerCase()];
+	for (const regionName of Object.keys(envs.farms)) {
+		if (alert.ruleName.includes(regionName)) {
+			farm = envs.farms[regionName];
+			break;
+		}
 	}
 
 	const logMsgArr = [
@@ -102,7 +105,7 @@ app.post('/grafana/alerts', (req, res) => {
 	alertsLogger.info(logMsgArr.join(SEP));
 
 	grafanaAlertsCntr++;
-	res.sendStatus(200);
+	res.sendStatus(STATUS_OK);
 });
 
 class GrafanaEvalMatch {
@@ -110,7 +113,6 @@ class GrafanaEvalMatch {
 		this.metric = metric;
 		this.value = value;
 		this.tags = tags;
-		this.region = this.tags && this.tags.region ? this.tags.region : '';
 	}
 
 	toString() {
@@ -122,7 +124,7 @@ class GrafanaEvalMatch {
 			tagsStr = tagsStr.slice(0, -1);
 		}
 
-		return this.metric + SEP + this.value + SEP + tagsStr + SEP + this.region;
+		return this.metric + SEP + this.value + SEP + tagsStr;
 	}
 }
 
@@ -145,7 +147,7 @@ app.post('/prometheus/alerts', (req, res) => {
 		alertsLogger.info(logMsgArr.join(SEP));
 		prometheusAlertsCntr++;
 	});
-	res.sendStatus(200);
+	res.sendStatus(STATUS_OK);
 });
 
 function getServerWithoutPort(server) {

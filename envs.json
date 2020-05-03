@@ -1,7 +1,7 @@
 {
 	"farms": {
-		"oregon": "MQORG001P",
-		"frankfurt": "MQFRA001P",
-		"sydney": "MQSYD001P"
+		"OREGON": "MQORG001P",
+		"FRANKFURT": "MQFRA001P",
+		"SYDNEY": "MQSYD001P"
 	}
 }
